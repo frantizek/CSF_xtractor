@@ -1,4 +1,4 @@
-![image](https://github.com/frantizek/github-profile-achievements/assets/32653773/8cdf4ba4-ddb3-4653-92ab-13d21ae87a42)# Herramienta para obtener los datos basicos desde una Constancia de Situacion Fiscal 
+# Herramienta para obtener los datos basicos desde una Constancia de Situacion Fiscal 
 
 ## Descripcion del Proyecto
 
