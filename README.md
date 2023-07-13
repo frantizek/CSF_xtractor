@@ -1,16 +1,29 @@
-# Constancia de Situacion Fiscal 
+# Herramienta para obtener los datos basicos desde una Constancia de Situacion Fiscal 
 
 ## Descripcion del Proyecto
 
-Las constancias de situacion fiscal se han vuelto un tema de moda, ahora que el SAT lo hizo parte de sus requerimientos para la facturacion.
+La herramienta debe de:
 
-En la mayoria de los casos, se comparten dichas constancias, en el formato original un PDF. 
-
-La Constancia de Situación Fiscal contiene datos de identidad, ubicación y caracterísitcas fiscales del contribuyente. 
-
-Desafortunadamente no todos los sistemas de facturacion permiten que se importe directamente el PDF para posteriormente "timbrar" la factura.
-
-Este sera un ejemplo de como se pueden extraer los datos mas importantes para poder generar una factura.
-
-
-
+- Validar si hay un PDF valido del cual se puede extraer los datos fiscales
+- Si es un PDF valido, obtener los siguientes datos:
+   * Nombre
+   * Codigo
+   * RFC
+   * Regimenfiscal
+   * FormadePago
+   * MetododePago
+   * Telefono
+   * Email
+   * Calle
+   * NumExterior
+   * NumInterior
+   * Pais
+   * CodigoPostal
+   * Estado
+   * Ciudad
+   * Municipio
+   * Localidad
+   * Colonia
+   * CuentacontableIngresos
+   * CuentacontabledeProvision	
+- Se guardan los datos conforme a la plantilla de ejemplo con el formato de archivo xlsx
