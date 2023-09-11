@@ -12,6 +12,7 @@ La herramienta debe de:
    * Codigo
        - Campo opcional
        - Definido por el usuario
+       - Campo Obligatorio por Factupronto
    * RFC
        - Campo Obligatorio
    * Regimenfiscal
