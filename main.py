@@ -1,4 +1,4 @@
-"""Module providing function argument parse."""
+"""Modulos que proveen las funciones que requiere el script."""
 import argparse
 import os
 import re
@@ -65,6 +65,9 @@ CFDI_4 = {
 
 
 def eliminar_elementos_vacios_y_con_pagina(lista):
+    """Elimina los elementos vacios de la lista.
+       Tambien busca los elementos que contienen la palabra 
+       PAGINA y los quita."""
     nueva_lista = []
     for item in lista:
         if item and "Página" not in item:
@@ -73,16 +76,19 @@ def eliminar_elementos_vacios_y_con_pagina(lista):
 
 
 def extraer_numero_consecutivo(archivo):
+    """Extracts the number stored in the file."""
     with open(archivo, "r") as f:
         numero = int(f.read())
     return numero
 
 
 def decrementar_numero(numero):
+    """Decreases the number by one."""
     return numero - 1
 
 
 def guardar_numero(archivo, numero):
+    """Saves the number with the new value into the file."""
     with open(archivo, "w") as f:
         f.write(str(numero))
 
@@ -115,13 +121,6 @@ class PdfConverter:
         retstr.close()
         return str
 
-    # convert pdf file text to string and save as a text_pdf.txt file
-    def save_convert_pdf_to_txt(self):
-        content = self.convert_pdf_to_txt()
-        txt_pdf = open('text_pdf.txt', 'wb')
-        txt_pdf.write(content.encode('utf-8'))
-        txt_pdf.close()
-
 
 def main():
     parser = argparse.ArgumentParser(description=
@@ -132,23 +131,15 @@ def main():
     parser.add_argument(
         "src", help="Nombre del archivo o directorio a procesar")
     args = parser.parse_args()
-    # config = vars(args)
-    # print(config)
 
     if args.directorio and os.path.isdir(args.src):
 
-        # print("Target directory does exist.")
         target_dir = Path(args.src)
         for entry in target_dir.iterdir():
-            # print(os.path.join(args.src, entry.name))
-            # print(os.path.join(args.src, entry.name))
-            # reader = PdfReader(os.path.join(args.src, entry.name))
-            # for page in reader.pages:
-            #     text = page.extract_text()
-            #     print(text)
+
             pdfConverter = PdfConverter(
                 file_path=os.path.join(args.src, entry.name))
-            # current_pdf = pdfConverter.convert_pdf_to_txt().replace("\n\n", "\n").split("\n")
+
             current_pdf = pdfConverter.convert_pdf_to_txt().replace(
                 "\n\n", "\n").replace("\x0c", "").split("\n")
             new_list = eliminar_elementos_vacios_y_con_pagina(current_pdf)
@@ -159,8 +150,6 @@ def main():
 
             UPPER_list = [x.upper() for x in new_list]
             new_list.clear()
-
-            # print(UPPER_list)
 
             if [s for s in UPPER_list if "SEGUNDO APELLIDO:" in s]:
                 is_persona_moral = False
@@ -312,7 +301,7 @@ def main():
                                  ])
 
     else:
-        print("Target directory or file doesn't exist")
+        print("El directorio o archivo no existe, favor de verificar.")
         raise SystemExit(1)
 
 
