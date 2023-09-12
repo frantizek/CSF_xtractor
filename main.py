@@ -11,9 +11,9 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 
 
-
-# El formato que uso es unica y exclusivamente para importar posteriormente en la herramienta evo factupronto
-datos_csf = {'nombre': '', 
+# El formato que uso es unica y exclusivamente para
+# importar posteriormente en la herramienta evo factupronto
+datos_csf = {'nombre': '',
              'codigo': '', 
              'rfc': '', 
              'regimenfiscal': '', 
@@ -27,7 +27,12 @@ datos_csf = {'nombre': '',
              'pais': '', 
              'codigopostal': '', 
              'estado': '', 
-             'ciudadmunicipio': '', 'localidad': '', 'colonia': '', 'cuentacontableingresos': '', 'cuentacontabledeprovision': ''}
+             'ciudadmunicipio': '',
+             'localidad': '',
+             'colonia': '',
+             'cuentacontableingresos': '',
+             'cuentacontabledeprovision': ''
+            }
 
 '''
 TODO: frantizek
@@ -109,7 +114,7 @@ class PdfConverter:
         str = retstr.getvalue()
         retstr.close()
         return str
-    
+
     # convert pdf file text to string and save as a text_pdf.txt file
     def save_convert_pdf_to_txt(self):
         content = self.convert_pdf_to_txt()
@@ -193,8 +198,8 @@ def main():
             datos_csf['codigo'] = "dnt" + str(numero)
 
             datos_csf['estado'] = re.search('NOMBRE DE LA ENTIDAD FEDERATIVA: (.*)',
-                                            [s for s in UPPER_list if "NOMBRE DE LA ENTIDAD FEDERATIVA: "
-                                             in s][0]).group(1).upper()
+                                            [s for s in UPPER_list if "NOMBRE DE LA ENTIDAD FEDERATIVA: "in s]
+                                            [0]).group(1).upper()
             datos_csf['colonia'] = re.search('NOMBRE DE LA COLONIA: (.*)',
                                              [s for s in UPPER_list if 'NOMBRE DE LA COLONIA: '
                                               in s][0]).group(1).upper()
