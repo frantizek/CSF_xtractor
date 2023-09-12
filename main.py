@@ -9,24 +9,24 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
-
+from pypdf import PdfReader
 
 # El formato que uso es unica y exclusivamente para
 # importar posteriormente en la herramienta evo factupronto
 datos_csf = {'nombre': '',
-             'codigo': '', 
-             'rfc': '', 
-             'regimenfiscal': '', 
-             'formadepago': '', 
-             'metododepago': '', 
-             'telefono': '', 
-             'email': '', 
-             'calle': '', 
-             'numexterior': '', 
-             'numinterior': '', 
-             'pais': '', 
-             'codigopostal': '', 
-             'estado': '', 
+             'codigo': '',
+             'rfc': '',
+             'regimenfiscal': '',
+             'formadepago': '',
+             'metododepago': '',
+             'telefono': '',
+             'email': '',
+             'calle': '',
+             'numexterior': '',
+             'numinterior': '',
+             'pais': '',
+             'codigopostal': '',
+             'estado': '',
              'ciudadmunicipio': '',
              'localidad': '',
              'colonia': '',
@@ -34,10 +34,8 @@ datos_csf = {'nombre': '',
              'cuentacontabledeprovision': ''
             }
 
-'''
-TODO: frantizek
-quitar las estructuras o constantes y usar un solo archivo de referencia
-'''
+# TODO: frantizek
+#       Quitar las estructuras o constantes y usar un solo archivo de referencia
 
 CFDI_4 = {
     'RÉGIMEN GENERAL DE LEY PERSONAS MORALES': 601,
@@ -63,10 +61,31 @@ CFDI_4 = {
     'RÉGIMEN SIMPLIFICADO DE CONFIANZA': 626
 }
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def get_info(path):
+    """Obtiene la cantidad de paginas del PDF.
+       Validando con esto que por lo menos sea un archivo PDF valido."""
+    with open(path, 'rb') as f:
+        pdf = PdfReader(f)
+        if len(pdf.pages) > 0:
+            print(len(pdf.pages))
+            return True
+        else:
+            return False
 
 def eliminar_elementos_vacios_y_con_pagina(lista):
     """Elimina los elementos vacios de la lista.
-       Tambien busca los elementos que contienen la palabra 
+       Tambien busca los elementos que contienen la palabra
        PAGINA y los quita."""
     nueva_lista = []
     for item in lista:
@@ -76,19 +95,19 @@ def eliminar_elementos_vacios_y_con_pagina(lista):
 
 
 def extraer_numero_consecutivo(archivo):
-    """Extracts the number stored in the file."""
+    """Extrae el numero almacenado en el archivo."""
     with open(archivo, "r") as f:
         numero = int(f.read())
     return numero
 
 
 def decrementar_numero(numero):
-    """Decreases the number by one."""
+    """Decrementa el numero en una unidad."""
     return numero - 1
 
 
 def guardar_numero(archivo, numero):
-    """Saves the number with the new value into the file."""
+    """Guarda el numero con el nuevo valor en el archivo."""
     with open(archivo, "w") as f:
         f.write(str(numero))
 
@@ -112,7 +131,7 @@ class PdfConverter:
         caching = True
         pagenos = set()
         for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages,
-                                      password=password, caching=caching, 
+                                      password=password, caching=caching,
                                       check_extractable=True):
             interpreter.process_page(page)
         fp.close()
@@ -121,185 +140,194 @@ class PdfConverter:
         retstr.close()
         return str
 
+def extract_info_from_pdf(current_CSF):
+    pdfConverter = PdfConverter(current_CSF)
+
+    current_pdf = pdfConverter.convert_pdf_to_txt().replace(
+        "\n\n", "\n").replace("\x0c", "").split("\n")
+    new_list = eliminar_elementos_vacios_y_con_pagina(current_pdf)
+
+    current_pdf.clear()
+
+    is_persona_moral = True
+
+    UPPER_list = [x.upper() for x in new_list]
+    new_list.clear()
+
+    if [s for s in UPPER_list if "SEGUNDO APELLIDO:" in s]:
+        is_persona_moral = False
+
+    # Is there a better way to clean this data structure???
+    for k in datos_csf:
+        datos_csf[k] = ''
+
+    # Datos comunes, no importa si el regimen fiscal es persona fisica o cualquier otro
+    datos_csf['pais'] = 'MÉXICO'
+    datos_csf['formadepago'] = 99
+    datos_csf['metododepago'] = 'PPD'
+
+    # Nombre de la Constancia de Situacion Fiscal es indiferente al tipo de persona
+    if UPPER_list.index('NOMBRE, DENOMINACIÓN O RAZÓN ') - UPPER_list.index(
+            'REGISTRO FEDERAL DE CONTRIBUYENTES') == 2:
+        datos_csf['nombre'] = UPPER_list[UPPER_list.index(
+            'NOMBRE, DENOMINACIÓN O RAZÓN ') - 1].upper()
+    elif UPPER_list.index('NOMBRE, DENOMINACIÓN O RAZÓN ') - UPPER_list.index(
+            'REGISTRO FEDERAL DE CONTRIBUYENTES') > 2:
+        partial_name = ""
+        for name_counter in range(UPPER_list.index('REGISTRO FEDERAL DE CONTRIBUYENTES') + 1,
+                                  (UPPER_list.index('NOMBRE, DENOMINACIÓN O RAZÓN '))):
+            partial_name = partial_name + UPPER_list[name_counter].upper()
+        datos_csf['nombre'] = partial_name
+
+    datos_csf['codigopostal'] = int(
+        re.findall(r'\d+', [s for s in UPPER_list if "CÓDIGO POSTAL:" in s][0])[0])
+
+    archivo = "dnt_consecutivo_latest.txt"
+
+    numero = extraer_numero_consecutivo(archivo)
+    numero = decrementar_numero(numero)
+    guardar_numero(archivo, numero)
+    datos_csf['codigo'] = "dnt" + str(numero)
+
+    datos_csf['estado'] = re.search('NOMBRE DE LA ENTIDAD FEDERATIVA: (.*)',
+                                    [s for s in UPPER_list if "NOMBRE DE LA ENTIDAD FEDERATIVA: " in s]
+                                    [0]).group(1).upper()
+    datos_csf['colonia'] = re.search('NOMBRE DE LA COLONIA: (.*)',
+                                     [s for s in UPPER_list if 'NOMBRE DE LA COLONIA: '
+                                      in s][0]).group(1).upper()
+    datos_csf['localidad'] = re.search('NOMBRE DE LA LOCALIDAD:(.*)',
+                                       [s for s in UPPER_list if 'NOMBRE DE LA LOCALIDAD:'
+                                        in s][0]).group(1).upper().lstrip()
+    datos_csf['ciudadmunicipio'] = re.search('NOMBRE DEL MUNICIPIO O DEMARCACIÓN TERRITORIAL: (.*)',
+                                             [s for s in UPPER_list if
+                                              'NOMBRE DEL MUNICIPIO O DEMARCACIÓN TERRITORIAL: '
+                                              in s][0]).group(1).upper()
+
+    datos_csf['calle'] = re.search('NOMBRE DE VIALIDAD: (.*)',
+                                   [s for s in UPPER_list
+                                    if 'NOMBRE DE VIALIDAD: ' in s][0]).group(1)
+    datos_csf['numexterior'] = re.search('NÚMERO EXTERIOR:(.*)',
+                                         [s for s in UPPER_list if 'NÚMERO EXTERIOR:'
+                                          in s][0]).group(1).lstrip()
+    datos_csf['numinterior'] = re.search('NÚMERO INTERIOR:(.*)',
+                                         [s for s in UPPER_list
+                                          if 'NÚMERO INTERIOR:'
+                                          in s][0]).group(1)
+
+    if is_persona_moral:
+
+        if UPPER_list[1] == UPPER_list[UPPER_list.index(
+                'DATOS DE IDENTIFICACIÓN DEL CONTRIBUYENTE: ') - 1] \
+                and \
+                UPPER_list[1] == UPPER_list[UPPER_list.index(
+            'DENOMINACIÓN/RAZÓN SOCIAL:') - 1]:
+            datos_csf['rfc'] = UPPER_list[1]
+        if UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 2:
+            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
+                'RÉGIMEN') - 1].upper()]
+        elif UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') > 2:
+            # aparentemente hay algunas CSF que tienen mucho historial
+            # en cuanto a los regimenes que han usado
+            # por lo que hay que tener en cuenta que pueden ser muchas lineas
+            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
+                'RÉGIMEN') + 3].upper()]
+        else:
+            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
+                'RÉGIMEN') + 1].upper()]
+    else:
+        if UPPER_list[1] == UPPER_list[UPPER_list.index(
+                'DATOS DE IDENTIFICACIÓN DEL CONTRIBUYENTE: ') - 1] and \
+                UPPER_list[1] == UPPER_list[UPPER_list.index(
+            'SEGUNDO APELLIDO:') + 1]:
+            datos_csf['rfc'] = UPPER_list[1]
+        if UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 2:
+            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
+                'RÉGIMEN') - 1].upper()]
+        else:
+            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
+                'RÉGIMEN') + 1].upper()]
+
+    # Al momento no hay absolutamente NADA que garantize
+    # que los datos de telefono o correo esten presentes
+    # por lo que ahorita no creo que sea necesario incorporarlos
+
+    print(datos_csf)
+    if datos_csf['email'] == '':
+        print(f"{bcolors.WARNING}ADVERTENCIA: El campo 'email' esta vacio. "
+              f"Se requiere llenar manualmente.{bcolors.ENDC}")
+
+    if os.path.exists('plantilla_clientes.csv'):
+        plantilla_creada = True
+    else:
+        plantilla_creada = False
+
+    with open('plantilla_clientes.csv', 'a', newline='') as file:
+        writer = csv.writer(file)
+        if not plantilla_creada:
+            field = ["Nombre",
+                     "Codigo",
+                     "RFC",
+                     "Regimenfiscal",
+                     "FormadePago",
+                     "MetododePago",
+                     "Telefono",
+                     "Email",
+                     "Calle",
+                     "NumExterior",
+                     "NumInterior",
+                     "Pais",
+                     "CodigoPostal",
+                     "Estado",
+                     "CiudadMunicipio",
+                     "Localidad",
+                     "Colonia",
+                     "CuentacontableIngresos",
+                     "CuentacontabledeProvision"]
+            writer.writerow(field)
+        writer.writerow([
+            datos_csf['nombre'],
+            datos_csf["codigo"],
+            datos_csf["rfc"],
+            datos_csf["regimenfiscal"],
+            datos_csf["formadepago"],
+            datos_csf["metododepago"],
+            datos_csf["telefono"],
+            datos_csf["email"],
+            datos_csf["calle"],
+            datos_csf["numexterior"],
+            datos_csf["numinterior"],
+            datos_csf["pais"],
+            datos_csf["codigopostal"],
+            datos_csf["estado"],
+            datos_csf["ciudadmunicipio"],
+            datos_csf["localidad"],
+            datos_csf["colonia"],
+            datos_csf["cuentacontableingresos"],
+            datos_csf["cuentacontabledeprovision"]
+        ])
+
 
 def main():
-    parser = argparse.ArgumentParser(description=
-                                     "Extractor de datos de un PDF con la Constancia de Situacion Fiscal",
+    parser = argparse.ArgumentParser(description="Extractor de datos de un PDF con la Constancia de Situacion Fiscal",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-a", "--archivo",
+                         action="store_true", help="Procesa un solo archivo")
     parser.add_argument("-d", "--directorio", action="store_true",
-                        help="Procesa todos los archivos dentro de un directorio")
-    parser.add_argument(
-        "src", help="Nombre del archivo o directorio a procesar")
+                         help="Procesa todos los archivos dentro de un directorio")
+    parser.add_argument("src", help="Nombre del archivo o directorio a procesar")
     args = parser.parse_args()
+    config = vars(args)
 
     if args.directorio and os.path.isdir(args.src):
-
         target_dir = Path(args.src)
         for entry in target_dir.iterdir():
-
-            pdfConverter = PdfConverter(
-                file_path=os.path.join(args.src, entry.name))
-
-            current_pdf = pdfConverter.convert_pdf_to_txt().replace(
-                "\n\n", "\n").replace("\x0c", "").split("\n")
-            new_list = eliminar_elementos_vacios_y_con_pagina(current_pdf)
-
-            current_pdf.clear()
-
-            is_persona_moral = True
-
-            UPPER_list = [x.upper() for x in new_list]
-            new_list.clear()
-
-            if [s for s in UPPER_list if "SEGUNDO APELLIDO:" in s]:
-                is_persona_moral = False
-
-            # Is there a better way to clean this data structure???
-            for k in datos_csf:
-                datos_csf[k] = ''
-
-            # Datos comunes, no importa si el regimen fiscal es persona fisica o cualquier otro
-            datos_csf['pais'] = 'MÉXICO'
-            datos_csf['formadepago'] = 99
-            datos_csf['metododepago'] = 'PPD'
-
-            # Nombre de la Constancia de Situacion Fiscal es indiferente al tipo de persona
-            if UPPER_list.index('NOMBRE, DENOMINACIÓN O RAZÓN ') - UPPER_list.index(
-                                'REGISTRO FEDERAL DE CONTRIBUYENTES') == 2:
-                datos_csf['nombre'] = UPPER_list[UPPER_list.index(
-                    'NOMBRE, DENOMINACIÓN O RAZÓN ')-1].upper()
-            elif UPPER_list.index('NOMBRE, DENOMINACIÓN O RAZÓN ') - UPPER_list.index(
-                                  'REGISTRO FEDERAL DE CONTRIBUYENTES') > 2:
-                partial_name = ""
-                for name_counter in range(UPPER_list.index('REGISTRO FEDERAL DE CONTRIBUYENTES')+1,
-                                          (UPPER_list.index('NOMBRE, DENOMINACIÓN O RAZÓN '))):
-                    partial_name = partial_name + UPPER_list[name_counter].upper()
-                datos_csf['nombre'] = partial_name
-
-            datos_csf['codigopostal'] = int(
-                re.findall(r'\d+', [s for s in UPPER_list if "CÓDIGO POSTAL:" in s][0])[0])
-
-            archivo = "dnt_consecutivo_latest.txt"
-
-            numero = extraer_numero_consecutivo(archivo)
-            numero = decrementar_numero(numero)
-            guardar_numero(archivo, numero)
-            datos_csf['codigo'] = "dnt" + str(numero)
-
-            datos_csf['estado'] = re.search('NOMBRE DE LA ENTIDAD FEDERATIVA: (.*)',
-                                            [s for s in UPPER_list if "NOMBRE DE LA ENTIDAD FEDERATIVA: "in s]
-                                            [0]).group(1).upper()
-            datos_csf['colonia'] = re.search('NOMBRE DE LA COLONIA: (.*)',
-                                             [s for s in UPPER_list if 'NOMBRE DE LA COLONIA: '
-                                              in s][0]).group(1).upper()
-            datos_csf['localidad'] = re.search('NOMBRE DE LA LOCALIDAD:(.*)',
-                                               [s for s in UPPER_list if 'NOMBRE DE LA LOCALIDAD:'
-                                                in s][0]).group(1).upper().lstrip()
-            datos_csf['ciudadmunicipio'] = re.search('NOMBRE DEL MUNICIPIO O DEMARCACIÓN TERRITORIAL: (.*)',
-                                                     [s for s in UPPER_list if
-                                                      'NOMBRE DEL MUNICIPIO O DEMARCACIÓN TERRITORIAL: '
-                                                      in s][0]).group(1).upper()
-
-            datos_csf['calle'] = re.search('NOMBRE DE VIALIDAD: (.*)',
-                                           [s for s in UPPER_list
-                                            if 'NOMBRE DE VIALIDAD: ' in s][0]).group(1)
-            datos_csf['numexterior'] = re.search('NÚMERO EXTERIOR:(.*)',
-                                                 [s for s in UPPER_list if 'NÚMERO EXTERIOR:'
-                                                  in s][0]).group(1).lstrip()
-            datos_csf['numinterior'] = re.search('NÚMERO INTERIOR:(.*)',
-                                                 [s for s in UPPER_list
-                                                  if 'NÚMERO INTERIOR:'
-                                                  in s][0]).group(1)
-
-            if is_persona_moral:
-
-                if UPPER_list[1] == UPPER_list[UPPER_list.index(
-                                               'DATOS DE IDENTIFICACIÓN DEL CONTRIBUYENTE: ') - 1]\
-                                    and\
-                                    UPPER_list[1] == UPPER_list[UPPER_list.index(
-                                         'DENOMINACIÓN/RAZÓN SOCIAL:') - 1]:
-                    datos_csf['rfc'] = UPPER_list[1]
-                if UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 2:
-                    datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
-                        'RÉGIMEN') - 1].upper()]
-                elif UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') > 2:
-                    # aparentemente hay algunas CSF que tienen mucho historial
-                    # en cuanto a los regimenes que han usado
-                    # por lo que hay que tener en cuenta que pueden ser muchas lineas
-                    datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
-                        'RÉGIMEN') + 3].upper()]
-                else:
-                    datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
-                        'RÉGIMEN') + 1].upper()]
+            extract_info_from_pdf(os.path.join(args.src, entry.name))
+    elif args.archivo and os.path.exists(args.src):
+        if os.path.getsize(args.src) > 0:
+            if not get_info(args.src):
+                raise SystemExit(1)
             else:
-                if UPPER_list[1] == UPPER_list[UPPER_list.index(
-                                    'DATOS DE IDENTIFICACIÓN DEL CONTRIBUYENTE: ') - 1] and \
-                                     UPPER_list[1] == UPPER_list[UPPER_list.index(
-                                    'SEGUNDO APELLIDO:') + 1]:
-                    datos_csf['rfc'] = UPPER_list[1]
-                if UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 2:
-                    datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
-                        'RÉGIMEN') - 1].upper()]
-                else:
-                    datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
-                        'RÉGIMEN') + 1].upper()]
-
-            # Al momento no hay absolutamente NADA que garantize
-            # que los datos de telefono o correo esten presentes
-            # por lo que ahorita no creo que sea necesario incorporarlos
-
-            print(datos_csf)
-
-            if os.path.exists('plantilla_clientes.csv'):
-                plantilla_creada = True
-            else:
-                plantilla_creada = False
-
-            with open('plantilla_clientes.csv', 'a', newline='') as file:
-                writer = csv.writer(file)
-                if not plantilla_creada:
-                    field = ["Nombre",
-                             "Codigo",
-                             "RFC",
-                             "Regimenfiscal",
-                             "FormadePago",
-                             "MetododePago",
-                             "Telefono",
-                             "Email",
-                             "Calle",
-                             "NumExterior",
-                             "NumInterior",
-                             "Pais",
-                             "CodigoPostal",
-                             "Estado",
-                             "CiudadMunicipio",
-                             "Localidad",
-                             "Colonia",
-                             "CuentacontableIngresos",
-                             "CuentacontabledeProvision"]
-                    writer.writerow(field)
-                writer.writerow([
-                                 datos_csf['nombre'],
-                                 datos_csf["codigo"],
-                                 datos_csf["rfc"],
-                                 datos_csf["regimenfiscal"],
-                                 datos_csf["formadepago"],
-                                 datos_csf["metododepago"],
-                                 datos_csf["telefono"],
-                                 datos_csf["email"],
-                                 datos_csf["calle"],
-                                 datos_csf["numexterior"],
-                                 datos_csf["numinterior"],
-                                 datos_csf["pais"],
-                                 datos_csf["codigopostal"],
-                                 datos_csf["estado"],
-                                 datos_csf["ciudadmunicipio"],
-                                 datos_csf["localidad"],
-                                 datos_csf["colonia"],
-                                 datos_csf["cuentacontableingresos"],
-                                 datos_csf["cuentacontabledeprovision"]
-                                 ])
-
+                extract_info_from_pdf(args.src)
     else:
         print("El directorio o archivo no existe, favor de verificar.")
         raise SystemExit(1)
