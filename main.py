@@ -266,7 +266,7 @@ def main():
             else:
                 plantilla_creada = False
 
-            with open('plantilla_clientes.csv', 'a', newline='', encoding="utf-8") as file:
+            with open('plantilla_clientes.csv', 'a', newline='') as file:
                 writer = csv.writer(file)
                 if not plantilla_creada:
                     field = ["Nombre",
