@@ -78,7 +78,6 @@ def get_info(path):
     with open(path, 'rb') as f:
         pdf = PdfReader(f)
         if len(pdf.pages) > 0:
-            print(len(pdf.pages))
             return True
         else:
             return False
@@ -121,9 +120,10 @@ class PdfConverter:
     def convert_pdf_to_txt(self):
         rsrcmgr = PDFResourceManager()
         retstr = StringIO()
-        codec = 'utf-8'  # 'utf16','utf-8'
+        #codec = 'utf-8'  # 'utf16','utf-8'
         laparams = LAParams()
-        device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+        #device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+        device = TextConverter(rsrcmgr, retstr, laparams=laparams)
         fp = open(self.file_path, 'rb')
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         password = ""
@@ -141,6 +141,7 @@ class PdfConverter:
         return str
 
 def extract_info_from_pdf(current_CSF):
+    print(f"Analizando {current_CSF}...")
     pdfConverter = PdfConverter(current_CSF)
 
     current_pdf = pdfConverter.convert_pdf_to_txt().replace(
