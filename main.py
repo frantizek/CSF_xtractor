@@ -163,7 +163,7 @@ def extract_info_from_pdf(current_CSF):
         datos_csf[k] = ''
 
     # Datos comunes, no importa si el regimen fiscal es persona fisica o cualquier otro
-    datos_csf['pais'] = 'MÉXICO'
+    datos_csf['pais'] = 'MEXICO'
     datos_csf['formadepago'] = 99
     datos_csf['metododepago'] = 'PPD'
 
