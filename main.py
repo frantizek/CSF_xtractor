@@ -121,9 +121,7 @@ class PdfConverter:
     def convert_pdf_to_txt(self):
         rsrcmgr = PDFResourceManager()
         retstr = StringIO()
-        #codec = 'utf-8'  # 'utf16','utf-8'
         laparams = LAParams()
-        #device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
         device = TextConverter(rsrcmgr, retstr, laparams=laparams)
         fp = open(self.file_path, 'rb')
         interpreter = PDFPageInterpreter(rsrcmgr, device)
