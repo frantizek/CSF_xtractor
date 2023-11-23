@@ -121,9 +121,8 @@ class PdfConverter:
     def convert_pdf_to_txt(self):
         rsrcmgr = PDFResourceManager()
         retstr = StringIO()
-        codec = 'utf-8'  # 'utf16','utf-8'
         laparams = LAParams()
-        device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+        device = TextConverter(rsrcmgr, retstr, laparams=laparams)
         fp = open(self.file_path, 'rb')
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         password = ""
@@ -240,12 +239,20 @@ def extract_info_from_pdf(current_CSF):
                 UPPER_list[1] == UPPER_list[UPPER_list.index(
             'SEGUNDO APELLIDO:') + 1]:
             datos_csf['rfc'] = UPPER_list[1]
-        if UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 2:
+        if UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 1:
+            datos_csf['regimenfiscal'] = 000
+            # TODO: frantizek
+            #       Se envia este valor, porque hay algunas constancias que tienen multiples regimenes
+            #       y no tienen el mismo comportamiento
+        elif UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') == 2:
             datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
                 'RÉGIMEN') - 1].upper()]
+        elif UPPER_list.index('RÉGIMEN') - UPPER_list.index('REGÍMENES:  ') > 2:
+            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index('REGÍMENES:  ') + 1].upper()]
         else:
-            datos_csf['regimenfiscal'] = CFDI_4[UPPER_list[UPPER_list.index(
-                'RÉGIMEN') + 1].upper()]
+            datos_csf['regimenfiscal'] = 000
+            # TODO: frantizek
+            #       Se podra usar un valor por default?
 
     # Al momento no hay absolutamente NADA que garantize
     # que los datos de telefono o correo esten presentes
